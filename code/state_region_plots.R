@@ -133,3 +133,12 @@ ww_trend %>%
 
 ggsave("outputs/utilities_by_epiweek.png")
 
+ww_trend %>%
+  filter(measure_date>as_date("2022-10-01")) %>%
+  ggplot(aes(x=measure_date,y=utility,fill=trend)) +
+  geom_vline(xintercept = max(ww_trend$measure_date),linetype="dashed",alpha=.5) +
+  geom_tile() +
+  theme_bw() +
+  facet_wrap(~region)
+
+ggsave("outputs/utilities_heatmap.png")
