@@ -13,6 +13,7 @@ ww_raw <- read_sf("https://opendata.arcgis.com/datasets/c6566d454edb47c680afe839
 
 ww_raw <- ww_raw %>%
   left_join(geo_link,by = "utility") %>%
+  select(-new_cases) %>%
   arrange(utility,measure_date) %>%
   drop_na()
 

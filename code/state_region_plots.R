@@ -73,6 +73,7 @@ ww_merge %>%
   scale_x_date(date_breaks = "2 months",date_labels = "%b-%y",date_minor_breaks = "1 month") +
   scale_fill_identity() +
   theme_minimal(base_size = 15) +
+  theme(plot.margin = margin(5.5,12.5,5.5,5.5, "points")) +
   labs(x=NULL,y="Wastewater Concentration\n(log scale)",
        caption = str_c("Data as of ",m_date))
 
