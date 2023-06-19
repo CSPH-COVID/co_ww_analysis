@@ -2,6 +2,11 @@
 
 This project contains the code to download publicly available wastewater data from Colorado utilities, estimate a state space model, and characterize the trend.
 
+Note: this branch requires use of restricted access data in the following files:
+
+- `1_SARS-CoV-2_Wastewater_Data_ 2023-04-24 .csv`
+
+- `SARS-CoV-2_Dashboard_Data_ 2023-04-24.csv`
 ------------------------------------------------------------------------
 
 ## Directory Structure
