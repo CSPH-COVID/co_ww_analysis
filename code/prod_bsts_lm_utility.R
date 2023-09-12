@@ -8,15 +8,15 @@ p_val_threshold=.05 #cutoff above which plateau is defined
 n_obs=5 #number of observations necessary to estimate model
 baye_iter=2000 #number of iterations for bayesian model - stable at 2000
 burnin = 500 # Throw away first 500 iterations - standard practive for bayesian modeling
-forecast_horizon=7 #days out to forecast
-trend_window=14 #number of days back to include when classifying trend (days not observations)
+forecast_horizon=10 #days out to forecast
+trend_window=21 #number of days back to include when classifying trend (days not observations)
 
 ##############################
 #Define list of utilities 
 utility_count <- ww_data %>%
   count(utility) %>%
   arrange(desc(n))
-#x=utility_count$utility[40] #pick one for testing
+#x=utility_count$utility[4] #pick one for testing
 
 #Define progress bar
 pb <- progress_bar$new(total = nrow(utility_count))
@@ -29,6 +29,7 @@ results <-
         
         #subset the data to estimate BSTS
         utility_ts <- ww_data %>%
+          #filter(measure_date < as_date("2022-10-15")) %>%
           filter(utility==x) %>%
           select(measure_date,sars) %>%
           mutate(measure_date=as_date(measure_date),
@@ -50,7 +51,7 @@ results <-
               fit <- bsts(
                 utility_ts$sars,
                 state.specification = ss,
-                #family = "student",
+                family = "student",
                 niter = 2000,
                 ping=0
               )
@@ -58,9 +59,8 @@ results <-
               #Plot fitted line
               #plot(fit,"state")
               
-              #Forecast 20 days with model
+              #Forecast x days with model
               pred_ww <- predict(fit, horizon = forecast_horizon,burn = burnin,quantiles = c(.05,.95))
-              
               
               #Build dataframe from model fit results
               plot_trend <- utility_ts %>%
@@ -68,7 +68,9 @@ results <-
                 bind_rows(
                   tibble(measure_date = as_date(max_date + c(1:length(pred_ww$mean))),
                          trend=pred_ww$mean,
-                         sars=NA)
+                         sars=NA,
+                         lower_ci=pred_ww$interval[1,],
+                         upper_ci=pred_ww$interval[2,])
                 ) %>%
                 mutate(utility=x)
               
@@ -91,7 +93,7 @@ results <-
         
         
       })
-
+#write_csv(plot_trend,"cache/broomfield_forecast.csv")
 #Remove nulls and bind to dataframe
 final <- results %>%
   compact() %>%

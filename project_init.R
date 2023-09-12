@@ -2,7 +2,7 @@
 
 #loads or install packages
 library(pacman) 
-p_load(tidyverse,sf,lubridate,bsts,broom,scales,conflicted,progress,patchwork,Hmisc)
+p_load(tidyverse,sf,lubridate,bsts,broom,scales,conflicted,progress,patchwork,Hmisc,janitor,gtools)
 
 #Resolves conflicts between functions from different packages
 conflict_prefer("filter", "dplyr")

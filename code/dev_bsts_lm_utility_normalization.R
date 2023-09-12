@@ -30,7 +30,7 @@ trend_window=21 #number of days back to include when classifying trend (days not
 utility_count <- ww_data %>%
   count(wwtp_name) %>%
   arrange(desc(n))
-x=utility_count$wwtp_name[2] #pick one for testing
+x=utility_count$wwtp_name[4] #pick one for testing
 u_list <- unique(utility_count$wwtp_name)
 
 for(x in u_list){
@@ -99,12 +99,25 @@ for(x in u_list){
   
   ###########
   comp_dat %>%
+    filter(measure_date > as_date("2021-07-01")) %>%
+    mutate(series = case_when(
+      series == "sars" ~ "Unnormalized",
+      series == "sars_frn" ~ "Flow-Rate Normalized",
+      series == "sars_ppn" ~ "PMMoV Normalized"
+    ),
+    series = factor(series,levels = c("Unnormalized","Flow-Rate Normalized","PMMoV Normalized"))) %>%
     ggplot(aes(x=measure_date)) +
     geom_point(aes(y=obs),color="purple",alpha=.4,size=1) +
     geom_line(aes(y=trend),color="darkorange") +
+    scale_x_date(date_labels = "%b, %Y") +
     labs(x=NULL,y="Normalized WW Conc. (logged)") +
-    theme_bw(base_size = 14) +
+    theme_bw(base_size = 15) +
+    theme(axis.title.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.ticks.y=element_blank()) +
     facet_wrap(~series,ncol = 1,scales = "free_y")
+  
+  ggsave("outputs/Broom_normalization.png",height = 6,width = 5,units = "in")
   
   ggplot() +
     geom_rect(data=bg,aes(xmin=min(comp_dat$measure_date),xmax=as_date(today()),
