@@ -47,3 +47,16 @@ sim_fun <- function(duration,init,parameters){
   f.out <- map_dfr(shell,~.[2,])
   return(f.out)
 }
+
+#Function to generate errors like observed in the ww data + add serial correlation like in the ww data
+gen_error <- function(x,n){
+  set.seed(20)
+  corr_coef = coef(lm(x ~ dplyr::lag(x)))[2] #Estimating serial correlation coefficient
+  diff_ecdf <- ecdf(x) 
+  u=c(1:n)
+  u[1]=quantile(diff_ecdf,runif(1), names = FALSE)
+  for(i in 2:n){
+    u[i] = corr_coef*u[i-1] + quantile(diff_ecdf,runif(1), names = FALSE)
+  }
+  return(u)
+}
