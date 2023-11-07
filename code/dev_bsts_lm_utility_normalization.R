@@ -22,7 +22,7 @@ p_val_threshold=.05 #cutoff above which plateau is defined
 n_obs=5 #number of observations necessary to estimate model
 baye_iter=2000 #number of iterations for bayesian model - stable at 2000
 burnin = 500 # Throw away first 500 iterations - standard practive for bayesian modeling
-forecast_horizon=7 #days out to forecast
+forecast_horizon=14 #days out to forecast
 trend_window=21 #number of days back to include when classifying trend (days not observations)
 
 ##############################
@@ -30,7 +30,7 @@ trend_window=21 #number of days back to include when classifying trend (days not
 utility_count <- ww_data %>%
   count(wwtp_name) %>%
   arrange(desc(n))
-x=utility_count$wwtp_name[4] #pick one for testing
+x=utility_count$wwtp_name[14] #pick one for testing
 u_list <- unique(utility_count$wwtp_name)
 
 for(x in u_list){
@@ -79,7 +79,14 @@ for(x in u_list){
       }) %>%
     group_by(series) %>%
     mutate(sars_bins=quantcut(trend,q=4,labels=c("low","low_med","med_high","high")),
-           utility=x)
+           utility=x) %>%
+    mutate(series = case_when(
+      series == "sars" ~ "Unnormalized",
+      series == "sars_frn" ~ "Flow-Rate Normalized",
+      series == "sars_ppn" ~ "PMMoV Normalized"
+    ),
+    series = factor(series,levels = c("Unnormalized","Flow-Rate Normalized","PMMoV Normalized"))) %>%
+    filter(measure_date > as_date("2021-07-01"))
   
 
   write_parquet(comp_dat,str_c("outputs/comp_dat/comp_dat_",make_clean_names(x),".parquet"))
@@ -99,13 +106,6 @@ for(x in u_list){
   
   ###########
   comp_dat %>%
-    filter(measure_date > as_date("2021-07-01")) %>%
-    mutate(series = case_when(
-      series == "sars" ~ "Unnormalized",
-      series == "sars_frn" ~ "Flow-Rate Normalized",
-      series == "sars_ppn" ~ "PMMoV Normalized"
-    ),
-    series = factor(series,levels = c("Unnormalized","Flow-Rate Normalized","PMMoV Normalized"))) %>%
     ggplot(aes(x=measure_date)) +
     geom_point(aes(y=obs),color="purple",alpha=.4,size=1) +
     geom_line(aes(y=trend),color="darkorange") +
@@ -114,10 +114,11 @@ for(x in u_list){
     theme_bw(base_size = 15) +
     theme(axis.title.y=element_blank(),
           axis.text.y=element_blank(),
-          axis.ticks.y=element_blank()) +
+          axis.ticks.y=element_blank(),
+          plot.margin = unit(c(1, 1, 1, 5),"mm")) +
     facet_wrap(~series,ncol = 1,scales = "free_y")
   
-  ggsave("outputs/Broom_normalization.png",height = 6,width = 5,units = "in")
+  ggsave("outputs/metro_normalization.png",height = 6,width = 5.5,units = "in")
   
   ggplot() +
     geom_rect(data=bg,aes(xmin=min(comp_dat$measure_date),xmax=as_date(today()),
@@ -140,9 +141,10 @@ for(x in u_list){
     fill(sars_bins,.direction = "down") %>%
     ggplot(aes(x=measure_date,y=series,fill=sars_bins)) +
     geom_tile(alpha=.6) +
-    scale_fill_manual(values=bg$clrs) +
+    scale_fill_manual(name="Categories",values=bg$clrs) +
     labs(x=NULL,y=NULL,title = x) +
-    theme_bw(base_size = 14)
+    theme_bw(base_size = 14) +
+    xlim(c(as_date("2021-07-10"),as_date("2023-04-01")))
   
   ggsave(str_c("outputs/heatmap/heatmap_all_quartiles_",make_clean_names(x),".png"),height = 2,width = 7,units = "in")
   
