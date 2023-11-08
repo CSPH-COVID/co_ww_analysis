@@ -22,6 +22,13 @@ smooth_hosp <- hosp_dat %>%
          week=floor(as.numeric(measure_date - min(measure_date))/7)) %>%
   drop_na(hosp) 
 
+ggplot(smooth_hosp,aes(x=measure_date)) +
+  geom_point(aes(y=hosp),alpha=.3) +
+  geom_line(aes(y=hosp_ma),color="magenta") +
+  labs(x=NULL,y="Hospitalizations") +
+  theme_bw(base_size = 14)
+
+ggsave("outputs/hosp_ts.png",width = 4.5,height = 4,units = "in")
 
 #Read in the ww data 
 ww_data_1 <- read_csv("input/shared/1_SARS-CoV-2_Wastewater_Data_ 2023-04-24 .csv")
@@ -37,7 +44,6 @@ ww_data <- ww_data_1 %>%
   drop_na(pcr_target_avg_conc,diff) %>%
   filter(!is.infinite(diff))
 
-stdev = sd(ww_data$diff)
 
 #plotting ww and hosp data to check agreement
 ggplot() +

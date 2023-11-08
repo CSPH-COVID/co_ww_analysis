@@ -5,6 +5,7 @@ conflict_prefer("filter", "dplyr")
 conflict_prefer("select", "dplyr")
 
 source("functions/simulation_functions.R")
+source("functions/analysis_functions.R")
 
 sim_dat <- read_csv("cache/simulated_data.csv") 
 
@@ -56,25 +57,16 @@ plot_trend %>%
 
 ggsave("outputs/ww_sim_level_compare.png",width = 4.5,height = 4,units = "in")
 
-slope_fun <- function(x,window_width=4){
-  wind_param <- floor(window_width/2)
-  slope_est=vector(length = length(x))
-  for(i in wind_param:(length(x)-wind_param)){
-    dsub <- x[(i-wind_param):(i+wind_param)]
-    slope_est[i] <- coef(lm(dsub ~ c(1:length(dsub))))[2]
-  }
-  return(slope_est)
-}
 
-
+#calculate the slope at all points
 slope_dat <- plot_trend %>%
-  mutate(across(c(hosp_ma,est_hosp),~slope_fun(.,window_width=4),.names = "{.col}_slope")) %>%
+  mutate(across(c(hosp_ma,est_hosp,hosp_pred),~slope_fun(.,window_width=4),.names = "{.col}_slope")) %>%
   select(measure_date,contains("slope"))
   
-slope_dat
+slope_dat %>%
   pivot_longer(-measure_date) %>%
   ggplot(aes(x=measure_date,y=value,color=name)) +
-  geom_line() +  
+  geom_point() +  
   scale_color_discrete(name=NULL) +
   labs(x=NULL,y="Series Slope") +
   theme_bw(base_size = 14) +
