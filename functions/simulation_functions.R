@@ -49,10 +49,11 @@ sim_fun <- function(duration,init,parameters){
 }
 
 #Function to generate errors like observed in the ww data + add serial correlation like in the ww data
-gen_error <- function(x,n){
-  set.seed(20)
-  corr_coef = coef(lm(x ~ dplyr::lag(x)))[2] #Estimating serial correlation coefficient
-  diff_ecdf <- ecdf(x) 
+gen_error <- function(x,n,seed){
+  set.seed(seed)
+  sc_model <- lm(x ~ dplyr::lag(x))
+  corr_coef = coef(sc_model)[2] #Estimating serial correlation coefficient
+  diff_ecdf <- ecdf(residuals(sc_model)) 
   u=c(1:n)
   u[1]=quantile(diff_ecdf,runif(1), names = FALSE)
   for(i in 2:n){
