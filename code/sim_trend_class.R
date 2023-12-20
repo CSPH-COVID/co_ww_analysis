@@ -7,11 +7,9 @@ conflict_prefer("select", "dplyr")
 source("functions/simulation_functions.R")
 source("functions/analysis_functions.R")
 
-sim_dat <- read_csv("cache/simulated_data.csv") 
-
-sim_dat <- sim_dat %>%
-  dplyr::mutate(hosp_ma=log(hosp_ma),
-                hosp_pred=log(hosp_pred))
+sim_dat <- read_csv("cache/simulated_data.csv") %>%
+  dplyr::mutate(rolling=log10(rolling),
+                sim_pred=log10(sim_pred))
 
 #############################
 #Parameters:
@@ -24,14 +22,13 @@ trend_window=21 #number of days back to include when classifying trend (days not
 
 ##############################
 
-ss <- AddLocalLinearTrend(list(), y=sim_dat$hosp_pred)  #I have found this best to strike balance between signal and noise
+ss <- AddLocalLinearTrend(list(), y=sim_dat$sim_pred)  #I have found this best to strike balance between signal and noise
 
 fit <- bsts(
-  sim_dat$hosp_pred,
+  sim_dat$sim_pred,
   state.specification = ss,
   family = "student",
-  niter = 2000,
-  ping=0
+  niter = 2000 #, ping=0
 )
 
 #Plot fitted line
@@ -42,25 +39,27 @@ pred_ww <- predict(fit, horizon = forecast_horizon,burn = burnin,quantiles = c(.
 
 #Build dataframe from model fit results
 plot_trend <- sim_dat %>%
-  mutate(est_hosp = colMeans(fit$state.contributions[-(1:burnin),"trend",]))
+  mutate(est_trend = colMeans(fit$state.contributions[-(1:burnin),"trend",]))
 
 plot_trend %>%
-  dplyr::select(measure_date,hosp_ma,est_hosp) %>%
-  pivot_longer(-measure_date) %>%
-  ggplot(aes(x=measure_date,y=value,color=name)) +
+  dplyr::select(sample_collect_date,Simulated=rolling,Estimated=est_trend) %>%
+  pivot_longer(-sample_collect_date) %>%
+  ggplot(aes(x=sample_collect_date,y=value,color=name)) +
   geom_line() +
+  scale_x_date(date_labels = "%Y %b") +
+  #scale_y_continuous(labels = unit_format(unit = "K", scale = 1e-3)) +
   scale_color_discrete(name=NULL) +
-  labs(x=NULL,y="Series Level (State)") +
-  theme_bw(base_size = 14) +
-  theme(legend.position = c(.82,.8),
+  labs(x=NULL,y="Wastewater Concentrations (log)") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = c(.28,.8),
         legend.background = element_blank())
 
-ggsave("outputs/ww_sim_level_compare.png",width = 4.5,height = 4,units = "in")
+ggsave("outputs/ww_sim_compare.png",width = 4.5,height = 4,units = "in")
 
 
 #calculate the slope at all points
 slope_dat <- plot_trend %>%
-  mutate(across(c(hosp_ma,est_hosp,hosp_pred),~slope_fun(.,window_width=4),.names = "{.col}_slope")) %>%
+  mutate(across(c(hosp_ma,est_hosp,sim_pred),~slope_fun(.,window_width=4),.names = "{.col}_slope")) %>%
   select(measure_date,contains("slope"))
   
 slope_dat %>%
