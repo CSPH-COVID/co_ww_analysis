@@ -63,8 +63,10 @@ confint(sc_model)
 
 #Gen synthetic data
 sim_dat <- ww_data %>%
-  mutate(sim_error = rolling*gen_error(diff_norm,nrow(.),seed=22),
+  mutate(sim_error = rolling*gen_error(diff_norm,nrow(.),seed=22)[[1]],
          sim_pred = rolling + sim_error)
+
+gen_error(ww_data$diff_norm,2,seed=22)[-1]
 
 summary(sim_dat$sim_pred)
 
