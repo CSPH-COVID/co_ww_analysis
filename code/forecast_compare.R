@@ -40,7 +40,7 @@ ggplot(utility_ts,aes(x=measure_date,y=sars)) +
   geom_line()
 
 utility_ts_subset <- utility_ts %>%
-  filter(measure_date < as_date("2022-04-15"))
+  filter(measure_date < as_date("2022-04-26"))
 
 #Define max and min dates of time series
 max_date=max(utility_ts_subset$measure_date)
@@ -51,7 +51,7 @@ x="sars"
 ts_var <- pull(utility_ts_subset[,x])
 
 
-ss <- AddLocalLinearTrend(list(), y=ts_var)  #I have found this best to strike balance between signal and noise
+ss <- AddLocalLinearTrend(list(), y=ts_var)  #I have found this best to strike balance between signal and noise - it let's the state drift slowly
 
 fit <- bsts(
   ts_var,
@@ -62,7 +62,15 @@ fit <- bsts(
   #ping=0
 )
 
-pred_ww <- predict(fit, horizon = forecast_horizon,burn = burnin,quantiles = c(.05,.95))
+pred_error <- bsts.prediction.errors(fit,cutpoints = c(1,2,3,4),burn = burnin)
+pred_error_sum <- pred_error[[1]] %>%
+  apply(.,2,mean)
+plot(cumsum(abs(pred_error_sum)))
+plot(pred_error_sum)
+hist(pred_error_sum)
+PlotBstsPredictionErrors(fit,cutpoints = c(1,2,3,4),burn = burnin)
+
+pred_ww <- predict(fit, horizon = forecast_horizon,burn = burnin,quantiles = c(.05,.25,.75,.95))
 
 plot_trend <- utility_ts_subset %>%
   select(measure_date,obs=all_of(x)) %>%
@@ -72,8 +80,10 @@ plot_trend <- utility_ts_subset %>%
     tibble(measure_date = as_date(max_date + c(1:length(pred_ww$mean))),
            trend=pred_ww$mean,
            sars=NA,
-           lower_ci=pred_ww$interval[1,],
-           upper_ci=pred_ww$interval[2,])
+           lower_5_ci=pred_ww$interval[1,],
+           lower_25_ci=pred_ww$interval[2,],
+           upper_75_ci=pred_ww$interval[3,],
+           upper_95_ci=pred_ww$interval[4,])
   ) %>%
   mutate(utility=x)
 
@@ -81,11 +91,14 @@ plot_trend <- utility_ts_subset %>%
 plot_trend %>%
   ggplot(aes(x=measure_date)) +
   geom_point(aes(y=obs)) +
-  geom_point(data=utility_ts %>% filter(measure_date>max_date),aes(y=sars),color="orange") +
+  geom_point(data=utility_ts %>% filter(measure_date>max_date),aes(y=sars),color="orange",shape="triangle") +
   geom_line(aes(y=trend),color="purple") +
-  geom_ribbon(aes(ymin=lower_ci,ymax=upper_ci),alpha=.2,fill="darkorange") +
+  geom_ribbon(aes(ymin=lower_5_ci,ymax=upper_95_ci),alpha=.2,fill="darkorange") +
+  geom_ribbon(aes(ymin=lower_25_ci,ymax=upper_75_ci),alpha=.3,fill="darkorange") +
   xlim(as_date("2022-01-01"),as_date("2022-06-01")) +
-  theme_bw(base_size = 14) +
-  labs(x="2022",y="WW Conc. (logged)",title = utility_count$wwtp_name[14])
+  theme_bw(base_size = 12) +
+  labs(x="2022",y="WW Concentration (logged)")
 
 ggsave("outputs/forecast.png",height=4.5,width=5,units = "in")
+ggsave("outputs/forecast.eps",height=4.5,width=5,units = "in")
+ggsave("outputs/forecast.pdf",height=4.5,width=5,units = "in")
