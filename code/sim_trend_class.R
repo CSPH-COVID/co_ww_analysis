@@ -8,7 +8,8 @@ source("functions/simulation_functions.R")
 source("functions/analysis_functions.R")
 
 sim_dat <- read_csv("cache/simulated_data.csv") %>%
-  dplyr::mutate(rolling=log10(rolling),
+  dplyr::mutate(conc=log10(conc),
+                rolling=log10(rolling),
                 sim_pred=log10(sim_pred))
 
 #############################
@@ -21,13 +22,13 @@ forecast_horizon=10 #days out to forecast
 trend_window=21 #number of days back to include when classifying trend (days not observations)
 
 ##############################
-
+rm(list = c("ss","fit","pred_ww"))
 ss <- AddLocalLinearTrend(list(), y=sim_dat$sim_pred)  #I have found this best to strike balance between signal and noise
 
 fit <- bsts(
   sim_dat$sim_pred,
   state.specification = ss,
-  family = "student",
+  #family = "student",
   niter = 2000 #, ping=0
 )
 
@@ -59,12 +60,14 @@ ggsave("outputs/ww_sim_compare.png",width = 4.5,height = 4,units = "in")
 
 #calculate the slope at all points
 slope_dat <- plot_trend %>%
-  mutate(across(c(hosp_ma,est_hosp,sim_pred),~slope_fun(.,window_width=4),.names = "{.col}_slope")) %>%
-  select(measure_date,contains("slope"))
+  mutate(across(c(conc,est_trend,sim_pred),~slope_fun(.,window_width=5,p_val_threshold))) %>%
+  select(sample_collect_date,conc,est_trend,sim_pred) %>%
+  unnest(cols = c(conc, est_trend, sim_pred),names_sep = "_") 
   
 slope_dat %>%
-  pivot_longer(-measure_date) %>%
-  ggplot(aes(x=measure_date,y=value,color=name)) +
+  select(sample_collect_date,contains("slope")) %>%
+  pivot_longer(-sample_collect_date) %>%
+  ggplot(aes(x=sample_collect_date,y=value,color=name)) +
   geom_point() +  
   scale_color_discrete(name=NULL) +
   labs(x=NULL,y="Series Slope") +
@@ -81,9 +84,46 @@ slope_dat %>%
 
 ###########
 #can we generate a table like a confusion matrix of some sort
+#rolling is truth and est_trend is modeled
+library(yardstick)
+
+cm <- plot_trend %>%
+  mutate(across(c(est_trend,rolling),~slope_fun(.,window_width=5,p_val_threshold))) %>%
+  select(sample_collect_date,est_trend,rolling) %>%
+  unnest(cols = c(est_trend, rolling),names_sep = "_") %>%
+  mutate(across(contains("classification"),~factor(.,levels=c("Increasing","Decreasing","Plateau"),labels=c("Increasing","Decreasing","Plateau")))) %>%
+  conf_mat(truth = rolling_classification, estimate = est_trend_classification)
+
+cm
+summary(cm)
+
+library(xtable)
+xtable(cm$table,
+       caption = c("Confusion matrix comparing the trend in the true but unobserved state (Truth) to the trend estimate based on the BSTS model (rows)"),
+       label = "tab:confusion_matrix",
+       digits = 0,
+       auto = TRUE) 
+
 
 #compare to not using BSTS to estimate trend
 
 
-#############3
-#Test if we simply used the moving average
+
+#############
+#Can we find the lag window that maximizes accuracy
+acc_mat <- map_dfr(c(3:20),
+                   function(x){
+                     slope_temp <- plot_trend %>%
+                       mutate(across(c(est_trend,rolling),~slope_fun(.,window_width=x,p_val_threshold))) %>%
+                       select(sample_collect_date,est_trend,rolling) %>%
+                       unnest(cols = c(est_trend, rolling),names_sep = "_") %>%
+                       mutate(across(contains("classification"),~factor(.,levels=c("Increasing","Decreasing","Plateau"),labels=c("Increasing","Decreasing","Plateau"))))
+                     
+                     cm <- summary(conf_mat(slope_temp,truth = rolling_classification, estimate = est_trend_classification))[1,3] %>%
+                       add_column(lag=x)
+                     
+                     return(cm)
+                   })
+
+ggplot(acc_mat,aes(x=lag,y=.estimate)) +
+  geom_point()

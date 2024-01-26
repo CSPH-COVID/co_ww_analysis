@@ -62,6 +62,7 @@ fit <- bsts(
   #ping=0
 )
 
+
 pred_error <- bsts.prediction.errors(fit,cutpoints = c(1,2,3,4),burn = burnin)
 pred_error_sum <- pred_error[[1]] %>%
   apply(.,2,mean)
