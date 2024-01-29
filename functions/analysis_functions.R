@@ -29,3 +29,36 @@ slope_fun <- function(x,window_width=4,p_val_threshold){
 
 
 
+#####################
+#Function to calculate the percentile of an observation given the history up to time t
+#x=plot_trend$rolling
+#start_obs = 30
+percentile_state <- function(x,start_obs,trailing=F,trail_length=25){
+  if(start_obs<10) warning("start_obs is less than 10 observations. There are not many observations to calculate the percentile.")
+  
+  drange=c(start_obs:length(x))
+  shell <- rep(NA,length(x))
+  
+  if(trailing){
+    if(trail_length>start_obs){
+      warning("Trail length is set to a number larger than the start observation. Increasing the start observation.")
+      start_obs = trail_length+1
+      drange=c(start_obs:length(x))
+    }
+    for(i in drange){
+      up_to_t = x[(i-trail_length):(i-1)]
+      shell[i] <- sum(up_to_t <= x[i]) / length(up_to_t)
+    }
+  } else {
+    #for each observation, calculate the percentile on the set x:t-1
+    for(i in drange){
+      up_to_t = x[1:(i-1)]
+      shell[i] <- sum(up_to_t <= x[i]) / length(up_to_t)
+    }
+  }
+  return(shell)
+  
+}
+
+
+  
