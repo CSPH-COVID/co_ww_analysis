@@ -57,35 +57,83 @@ plot_trend %>%
 
 ggsave("outputs/ww_sim_compare.png",width = 4.5,height = 4,units = "in")
 
+#Percentile the state and classify
+brks <- c(0,.2,.4,.6,.8,1)
 
-#calculate the slope at all points
-slope_dat <- plot_trend %>%
-  mutate(across(c(conc,est_trend,sim_pred),~slope_fun(.,window_width=5,p_val_threshold))) %>%
-  select(sample_collect_date,conc,est_trend,sim_pred) %>%
-  unnest(cols = c(conc, est_trend, sim_pred),names_sep = "_") 
-  
-slope_dat %>%
-  select(sample_collect_date,contains("slope")) %>%
-  pivot_longer(-sample_collect_date) %>%
-  ggplot(aes(x=sample_collect_date,y=value,color=name)) +
-  geom_point() +  
-  scale_color_discrete(name=NULL) +
-  labs(x=NULL,y="Series Slope") +
-  theme_bw(base_size = 14) +
-  theme(legend.position = c(.2,.9),
-        legend.background = element_blank())
-
-ggsave("outputs/ww_sim_slope_compare.png",width = 4.5,height = 4,units = "in")
+perc_state <- plot_trend %>%
+  mutate(across(c(rolling,est_trend),~percentile_state(.,start_obs = 40,trailing = F),.names = "{.col}_ps_all"),
+         across(c(rolling,est_trend),~percentile_state(.,start_obs = 40,trailing = T,trail_length = 25),.names = "{.col}_ps_trailing"),
+         across(contains("ps"),~cut(.,breaks = c(brks[1]-.01,brks[2:length(brks)]),labels = c("Very Low","Low","Moderate","High","Very High")),.names = "{.col}_class"))
 
 
-slope_dat %>%
-  ggplot(aes(x=est_hosp_slope,y=hosp_ma_slope)) +
-  geom_point()
+bg <- tibble(high=brks[2:length(brks)],
+             low=brks[1:length(brks)-1],
+             clrs=str_c("#",c("1495CC","2a9d8f","e9c46a","f4a261","e76f51")))
+
+ps_plot <- perc_state %>%
+  select(sample_collect_date,Simulated=rolling_ps_all,Estimated=est_trend_ps_all) %>%
+  pivot_longer(-sample_collect_date) 
+
+ggplot() +
+  geom_rect(data=bg,aes(xmin=as_date(min(perc_state$sample_collect_date)),xmax=as_date(max(perc_state$sample_collect_date)),
+                        ymin=low,ymax=high,fill=clrs),alpha=.4,show.legend = F) +
+  geom_line(data=ps_plot,aes(x=sample_collect_date,y=value,linetype=name)) +
+  scale_x_date(date_labels = "%Y %b") +
+  scale_y_continuous(breaks = brks,labels = c("0%","20%","40%","60%","80%","100%")) +
+  scale_fill_identity() +
+  scale_linetype(name=NULL) +
+  labs(x=NULL,y="Wastewater Concentrations (percent rank)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = c(.70,.2),
+        legend.background = element_blank(),
+        legend.key = element_rect(colour = NA, fill = NA))
+
+ggsave("outputs/ww_sim_state_class_compare.png",width = 4.5,height = 4,units = "in")
+
+
+library(yardstick) #package to calculate confusion matrix
+library(xtable) #package to format confusion matrix table
+
+#Confusion matrix for state classification based on All data
+cm_state_all <- perc_state %>%
+  select(sample_collect_date,est_trend_ps_all_class,rolling_ps_all_class) %>%
+  conf_mat(truth = rolling_ps_all_class, estimate = est_trend_ps_all_class)
+
+cm_state_all
+summary(cm_state_all)
+
+
+print(xtable(cm_state_all$table,
+       caption = c("Confusion matrix comparing the true but unobserved state (columns) to the BSTS state estimate (rows). "),
+       label = "tab:confusion_matrix_state_all",
+       digits = 0,
+       auto = TRUE),
+      add.to.row = list(pos=list(5),command="\\hline \\\\\n \\multicolumn{6}{l}{\\footnotesize{Note that states are classified based on the following ranges: Very Low (0-20\\%], Low (20-40\\%], Moderate (40-60\\%], High (60-80\\%], Very High (80-100\\%]} }"),
+      hline.after = c(-1,0)
+)
+
+#Confusion matrix for state classification based on trailing 90 data
+cm_state_trailing <- perc_state %>%
+  select(sample_collect_date,est_trend_ps_trailing_class,rolling_ps_trailing_class) %>%
+  conf_mat(truth = rolling_ps_trailing_class, estimate = est_trend_ps_trailing_class)
+
+cm_state_trailing
+summary(cm_state_trailing)
+
+
+print(xtable(cm_state_trailing$table,
+             caption = c("Confusion matrix comparing the true but unobserved state (columns) to the BSTS state estimate (rows). "),
+             label = "tab:confusion_matrix_state_trailing",
+             digits = 0,
+             auto = TRUE),
+      add.to.row = list(pos=list(5),command="\\hline \\\\\n \\multicolumn{6}{l}{\\footnotesize{Note that states are classified based on the following ranges: Very Low (0-20\\%], Low (20-40\\%], Moderate (40-60\\%], High (60-80\\%], Very High (80-100\\%]} }"),
+      hline.after = c(-1,0)
+)
 
 ###########
 #can we generate a table like a confusion matrix of some sort
 #rolling is truth and est_trend is modeled
-library(yardstick)
+
 
 cm <- plot_trend %>%
   mutate(across(c(est_trend,rolling),~slope_fun(.,window_width=5,p_val_threshold))) %>%
@@ -97,7 +145,7 @@ cm <- plot_trend %>%
 cm
 summary(cm)
 
-library(xtable)
+
 xtable(cm$table,
        caption = c("Confusion matrix comparing the trend in the true but unobserved state (Truth) to the trend estimate based on the BSTS model (rows)"),
        label = "tab:confusion_matrix",

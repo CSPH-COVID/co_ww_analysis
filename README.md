@@ -58,3 +58,8 @@ trend_{\tau} = \beta time_{\tau} + \epsilon_{\tau},
 $$
 
 where $\tau \in [t-14,t]$. For example, the trend on October 14, 2022 is classified based on all measurements recorded between October 1 and 14. The coefficient on $time$, $\beta$, represents the slope of the time trend. On each day, we test the null hypothesis that $\beta = 0$.  If we reject the null hypothesis, we consider the trend increasing ($\beta>0$) or decreasing ($\beta<0$).  If we fail to reject the null hypothesis, we cannot classify the trend confidently and consider the trend plateau. 
+
+
+## Thoughts
+
+- Transfer priors when utilities don't have many observations (new or large gaps) or when lab methods change
