@@ -1,23 +1,22 @@
 #This script reads in and processes raw wastewater data
 ##########################
-#Not run: 
 
-#Link to regions: Jude made this from data Rachel W. shared
-geo_link <- read_csv("input/geo_link.csv")
+library(pacman)
+p_load(tidyverse,lubridate,conflicted,bsts)
 
-#WW data from cdphe api
-ww_raw <- read_sf("https://opendata.arcgis.com/datasets/c6566d454edb47c680afe839a0b4fc26_0.geojson") %>%
-  st_set_geometry(NULL) %>%
-  select(measure_date=Date,utility=Utility,sars=SARS_CoV_2_copies_L,new_cases=Number_of_New_COVID19_Cases_by_) %>%
-  mutate(measure_date=mdy(measure_date)) 
+conflict_prefer("filter", "dplyr")
+conflict_prefer("lag", "dplyr")
+conflict_prefer("select", "dplyr")
 
-ww_raw <- ww_raw %>%
-  left_join(geo_link,by = "utility") %>%
-  select(-new_cases) %>%
-  arrange(utility,measure_date) %>%
-  drop_na()
+#############################
+ww_data_raw <- read_csv("input/shared/1_SARS-CoV-2_Wastewater_Data_2023-04-24.csv")
 
-write_csv(ww_raw,"input/ww_raw.csv")
+ww_data_core <- read_csv("input/shared/1_SARS-CoV-2_Wastewater_Data_2023-04-24.csv") %>%
+  mutate(measure_date=as_date(mdy(sample_collect_date))) %>%
+  select(wwtp_name,measure_date,pcr_target_avg_conc,pcr_target_std_error,quality_flag,flow_rate,population_served,
+         pcr_target_below_lod,hum_frac_mic_conc,hum_frac_target_mic)
+
+write_csv(ww_data_core,"cache/ww_data_core.csv")
 
 #Read in ww data
 ww_data <- read_csv("input/ww_raw.csv")

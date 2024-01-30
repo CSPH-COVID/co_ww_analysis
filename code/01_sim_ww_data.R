@@ -9,13 +9,10 @@ conflict_prefer("lag", "dplyr")
 source("functions/simulation_functions.R")
 ################################
 #Read in the ww data 
-ww_data_1 <- read_csv("input/shared/1_SARS-CoV-2_Wastewater_Data_ 2023-04-24 .csv")
-
-ww_data <- ww_data_1 %>%
-  dplyr::filter(wwtp_name == "Fort Collins - Drake") %>%
-  dplyr::select(wwtp_name,sample_collect_date,pcr_target_avg_conc) %>%
-  mutate(sample_collect_date=mdy(sample_collect_date),
-         conc = pcr_target_avg_conc,
+ww_data <- read_csv("cache/ww_data_core.csv") %>%
+  filter(wwtp_name == "Fort Collins - Drake") %>%
+  select(wwtp_name,measure_date,pcr_target_avg_conc) %>%
+  mutate(conc = pcr_target_avg_conc,
          rolling = roll_mean(conc,n=14,fill = NA),
          diff_norm = (conc - rolling)/rolling,
          diff = (conc - rolling)) %>%
@@ -26,8 +23,8 @@ ww_data <- ww_data_1 %>%
 #plotting ww data
 f1p1 <- ggplot() +
   #geom_line(data=smooth_hosp,aes(x=measure_date,y=scale(hosp)),color="red") +
-  geom_point(data=ww_data,aes(x=sample_collect_date,y=conc),alpha=1) +
-  geom_line(data=ww_data,aes(x=sample_collect_date,y=rolling),alpha=1,size=1,color="blue") +
+  geom_point(data=ww_data,aes(x=measure_date,y=conc),alpha=1) +
+  geom_line(data=ww_data,aes(x=measure_date,y=rolling),alpha=1,size=1,color="blue") +
   scale_y_continuous(labels = unit_format(unit = "K", scale = 1e-3)) +
   scale_x_date(date_labels = "%Y %b") +
   labs(x=NULL,y="WW Concentrations") +
@@ -35,7 +32,7 @@ f1p1 <- ggplot() +
 
 
 f1p2 <- ww_data %>%
-  ggplot(aes(x=sample_collect_date,y=diff_norm)) +
+  ggplot(aes(x=measure_date,y=diff_norm)) +
   geom_point() +
   scale_x_date(date_breaks = "year",date_labels = "%Y") +
   labs(x=NULL,y="WW Normalized Dev.") +
@@ -72,11 +69,11 @@ summary(sim_dat$sim_pred)
 
 #Plot to confirm general patterns are similar
 sim_dat %>%
-  select(sample_collect_date,sim_pred,conc) %>%
+  select(measure_date,sim_pred,conc) %>%
   mutate(across(c(sim_pred,conc),scale)) %>%
-  pivot_longer(-sample_collect_date,names_to = "name",values_to = "value") %>% 
+  pivot_longer(-measure_date,names_to = "name",values_to = "value") %>% 
   ggplot() +
-  geom_line(aes(x=sample_collect_date,y=value,color=name)) +
+  geom_line(aes(x=measure_date,y=value,color=name)) +
   scale_color_discrete(name=NULL) +
   labs(x=NULL,y="Scaled WW conc. + Sim hosp") +
   theme_bw(base_size = 14) +

@@ -9,7 +9,7 @@ slope_fun <- function(x,window_width=4,p_val_threshold){
       reg_out[[i]] <- c(`Estimate`=NA,`Pr(>|t|)`=NA)
       next
       }
-    dsub <- x[(i-wind_param):(i+wind_param)]
+    dsub <- x[(i-window_width):i]
     reg_out[[i]] <- summary(lm(dsub ~ c(1:length(dsub))))$coefficients[2,c(1,4)] #extract estimate and pval
     #slope_est[i] <- coef(reg_out)[2]
     #slope_pval[i] <- summary(reg_out)$coefficients
