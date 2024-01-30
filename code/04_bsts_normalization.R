@@ -89,23 +89,25 @@ for(x in u_list[1:67]){
     unnest(cols = c(state_slope),names_sep = "_") %>%
     mutate(state_slope_classification = factor(state_slope_classification,levels=c("Increasing","Decreasing","Plateau"),labels=c("Increasing","Decreasing","Plateau")))
   
-
-  write_parquet(comp_dat,str_c("outputs/comp_dat/comp_dat_",make_clean_names(x),".parquet"))
+  if(!dir.exists("cache/bsts_out")) dir.create("cache/bsts_out")
+  write_parquet(comp_dat,str_c("cache/bsts_out/",make_clean_names(x),".parquet"))
   
   
 
   }
 
 
-all_comp <- list.files("outputs/comp_dat",pattern = ".parquet",full.names = T) %>%
-  map_dfr(read_parquet)
+list.files("cache/bsts_out",pattern = ".parquet",full.names = T) %>%
+  map_dfr(read_parquet) %>%
+  select(utility,series,measure_date,everything()) %>%
+  write_csv("cache/bsts_out_all.csv")
 
-all_comp %>%
-  pivot_wider(id_cols=c(utility,measure_date),
-              names_from = series,
-              values_from = c(state,state_pr,obs,sars_bins),
-              values_fn = first) %>%
-  write_csv("outputs/all_comp.csv")
+# all_comp %>%
+#   pivot_wider(id_cols=c(utility,measure_date),
+#               names_from = series,
+#               values_from = c(state,state_pr,obs,sars_bins),
+#               values_fn = first) %>%
+  
 
 
 
