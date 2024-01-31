@@ -20,7 +20,7 @@ slope_fun <- function(x,window_width=4,p_val_threshold){
   classification=case_when(
     slope>0 & p_val<=p_val_threshold ~ "Increasing",
     slope<0 & p_val<=p_val_threshold ~ "Decreasing",
-    p_val>p_val_threshold ~ "Plateau",
+    p_val>p_val_threshold ~ "Inconclusive",
   ))
   return(reg_out)
 }

@@ -139,7 +139,7 @@ cm <- plot_trend %>%
   mutate(across(c(est_trend,rolling),~slope_fun(.,window_width=5,p_val_threshold))) %>%
   select(sample_collect_date,est_trend,rolling) %>%
   unnest(cols = c(est_trend, rolling),names_sep = "_") %>%
-  mutate(across(contains("classification"),~factor(.,levels=c("Increasing","Decreasing","Plateau"),labels=c("Increasing","Decreasing","Plateau")))) %>%
+  mutate(across(contains("classification"),~factor(.,levels=c("Increasing","Decreasing","Inconclusive"),labels=c("Increasing","Decreasing","Inconclusive")))) %>%
   conf_mat(truth = rolling_classification, estimate = est_trend_classification)
 
 cm
