@@ -26,9 +26,11 @@ The project is organized into several subdirectories:
 
 ## Instructions
 
-1. Place the file `1_SARS-CoV-2_Wastewater_Data_2023-04-24.csv` into the input directory. 
+1. Run the script `project_init.R` in the root directory to install packages and set up folders.
 
-2. Run the scripts in the code directory in numeric order.
+2. Place the file `1_SARS-CoV-2_Wastewater_Data_2023-04-24.csv` into the input directory. 
+
+3. Run the scripts in the code directory in numeric order.
 
 
 ## Thoughts
