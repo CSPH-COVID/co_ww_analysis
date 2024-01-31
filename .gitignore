@@ -41,7 +41,7 @@ vignettes/*.pdf
 
 cache/*
 outputs/*
-input/shared
+input/*
 
 *.DS_Store
 ww_raw.csv
